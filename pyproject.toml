@@ -1,0 +1,43 @@
+[project]
+name = "market-data-server"
+version = "0.1.0"
+description = "Market data REST API skeleton"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "httpx>=0.27",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["app", "app.core", "app.schemas", "app.api", "app.api.v1"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "S"]
+per-file-ignores = { "app/core/auth.py" = ["B008"], "app/core/config.py" = ["S105"], "tests/**" = ["S101", "S105"] }
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
