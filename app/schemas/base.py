@@ -8,6 +8,7 @@ Shape:
       "error": null | {...}       # present on failures
     }
 """
+
 from datetime import UTC, datetime
 from typing import Annotated
 from uuid import uuid4

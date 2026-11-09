@@ -8,6 +8,7 @@ dependencies = [
     "uvicorn[standard]>=0.30",
     "pydantic>=2.8",
     "pydantic-settings>=2.4",
+    "cryptography>=42",
 ]
 
 [project.optional-dependencies]
@@ -17,6 +18,7 @@ dev = [
     "httpx>=0.27",
     "ruff>=0.6",
     "mypy>=1.11",
+    "pandas-stubs>=2.1",
 ]
 
 [build-system]
@@ -24,7 +26,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["app", "app.core", "app.schemas", "app.api", "app.api.v1"]
+packages = ["app", "app.core", "app.schemas", "app.services", "app.api", "app.api.v1"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -41,3 +43,7 @@ per-file-ignores = { "app/core/auth.py" = ["B008"], "app/core/config.py" = ["S10
 [tool.mypy]
 python_version = "3.12"
 strict = true
+
+[[tool.mypy.overrides]]
+module = "yfinance.*"
+ignore_missing_imports = true

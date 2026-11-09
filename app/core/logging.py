@@ -1,4 +1,5 @@
 """Project logger setup. Modules do `logger = logging.getLogger(__name__)`."""
+
 import json
 import logging
 import sys
@@ -32,9 +33,7 @@ def configure_logging(level: str = "INFO", *, json_logs: bool = False) -> None:
     if json_logs:
         handler.setFormatter(JsonFormatter())
     else:
-        handler.setFormatter(
-            logging.Formatter("%(asctime)s %(levelname)s [%(name)s] %(message)s")
-        )
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s [%(name)s] %(message)s"))
     root = logging.getLogger()
     for h in list(root.handlers):
         root.removeHandler(h)

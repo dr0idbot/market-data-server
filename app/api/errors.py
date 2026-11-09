@@ -1,5 +1,6 @@
 """Custom exception handlers so *every* response (including errors)
 follows the base schema envelope."""
+
 import logging
 from collections.abc import Mapping
 
@@ -39,9 +40,7 @@ def add_error_handlers(app: FastAPI) -> None:
     # Keyed on starlette's base so both starlette's and FastAPI's
     # HTTPException subclasses match.
     @app.exception_handler(StarletteHTTPException)
-    async def http_exception_handler(
-        request: Request, exc: StarletteHTTPException
-    ) -> JSONResponse:
+    async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
         detail = exc.detail
         if isinstance(detail, dict):
             code = str(detail.get("code", "error"))
@@ -85,9 +84,7 @@ def add_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-        logger.exception(
-            "Unhandled error on %s %s", request.method, request.url.path, exc_info=exc
-        )
+        logger.exception("Unhandled error on %s %s", request.method, request.url.path, exc_info=exc)
         return _error_response(
             request,
             status.HTTP_500_INTERNAL_SERVER_ERROR,
