@@ -71,6 +71,17 @@ INTRADAY_INTERVALS: frozenset[str] = frozenset(INTERVAL_MAX_DAYS)
 DEFAULT_RANGE = "1y"
 
 
+# Keys that separate "Yahoo served a real profile" from its silent
+# repair-fallback stub (e.g. {"trailingPegRatio": …}) seen on datacenter IPs.
+_INFO_KEYSTONES: tuple[str, ...] = (
+    "quoteType", "shortName", "longName", "sector", "marketCap", "currency",
+    "displayName", "firstTradeDate", "regularMarketPrice",
+)
+
+# history_meta marker present for every readable/upstream-healthy history call.
+_META_KEYSTONE = "tradingPeriods"
+
+
 class YahooError(Exception):
     code = "upstream_unavailable"
 
@@ -315,15 +326,24 @@ def resolve_ohlcv_params(
 
 
 def fetch_metadata(symbol: str) -> tuple[dict[str, Any], str | None]:
-    """Fetch the full info dict + canonical ISIN; raises YahooError on failure."""
+    """Fetch the full info dict + canonical ISIN; raises YahooError on failure.
+
+    Yahoo sometimes answers with a silent, near-empty info stub instead of
+    erroring (seen from datacenter IPs). That is reported as
+    YahooUnavailable — we refuse to hand callers a hollow profile.
+    """
     try:
         ticker = yf.Ticker(symbol)
-        info = ticker.get_info()
-        if not info:
-            raise YahooNotFound(
+        info = ticker.get_info() or {}
+        if not enough_profile_keys(info):
+            raise YahooUnavailable(
                 operation=f"yfinance get_info for {symbol!r}",
-                message=f"Yahoo Finance has no details for {symbol!r} (unknown or delisted)",
-                raw="quoteSummary: empty info payload",
+                message=(
+                    f"Yahoo returned no usable profile for {symbol!r}: symbol may "
+                    "be unknown/delisted, or Yahoo is not serving profile data for "
+                    "this caller (IP throttling). Retry later or from another host."
+                ),
+                raw=f"info keys received: {sorted(info)[:8]}",
                 tb="",
             )
     except YahooError:
@@ -463,8 +483,36 @@ def fetch_ohlcv(
     df = frame if isinstance(frame, pd.DataFrame) else pd.DataFrame()
     if trim_date is not None and not df.empty:
         df = _trim_bars_after(df, trim_date)
-    meta = getattr(ticker, "history_metadata", None)
-    return df, (dict(meta) if meta else {})
+    meta = _history_meta_dict(ticker, symbol)
+    if df.empty and _META_KEYSTONE not in meta:
+        raise YahooNotFound(
+            operation=f"yfinance history for {symbol!r}",
+            message=(
+                f"Yahoo returned no bars for {symbol!r}: symbol is unknown or "
+                "delisted, or the requested window is empty"
+            ),
+            raw=f"history_metadata missing {_META_KEYSTONE!r}",
+            tb="",
+        )
+    return df, meta
+
+
+def _history_meta_dict(ticker: Any, symbol: str) -> dict[str, Any]:
+    """dict() around yfinance's history_metadata; its __getitem__ may KeyError."""
+    obj = getattr(ticker, "history_metadata", None)
+    if not obj:
+        return {}
+    try:
+        return dict(obj)
+    except Exception as exc:
+        logger.warning("history_metadata unreadable for %s: %s: %s", symbol,
+                       type(exc).__name__, exc)
+        return {}
+
+
+def enough_profile_keys(info: dict[str, Any]) -> bool:
+    """True when info carries at least one keystone of a genuine profile."""
+    return any(key in info for key in _INFO_KEYSTONES)
 
 
 def _trim_bars_after(df: pd.DataFrame, end_date: date) -> pd.DataFrame:

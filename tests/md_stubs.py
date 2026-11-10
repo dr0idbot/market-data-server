@@ -126,4 +126,5 @@ def history_meta(sub_name: str = "Apple") -> dict[str, Any]:
         "currency": "USD",
         "timezone": "America/New_York",
         "exchangeName": "NMS",
+        "tradingPeriods": [{"start": "...", "end": "..."}],
     }
